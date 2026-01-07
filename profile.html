@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Who's Watching? | Netflix</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<style>
+*{
+  margin:0;
+  padding:0;
+  box-sizing:border-box;
+  font-family:Arial, sans-serif;
+}
+body{
+  background:#141414;
+  color:#fff;
+  text-align:center;
+}
+
+/* HEADER */
+header{
+  padding:25px 40px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+}
+header img{ width:130px; }
+
+.logout-btn{
+  background:transparent;
+  border:1px solid red;
+  color:red;
+  padding:8px 16px;
+  cursor:pointer;
+}
+.logout-btn:hover{
+  background:red;
+  color:#fff;
+}
+
+/* TITLE */
+h1{
+  margin:40px 0;
+  font-size:48px;
+}
+
+/* PROFILES */
+.profiles{
+  display:flex;
+  justify-content:center;
+  gap:40px;
+  flex-wrap:wrap;
+}
+
+.profile{
+  position:relative;
+}
+
+.profile img{
+  width:140px;
+  height:140px;
+  border-radius:6px;
+  object-fit:cover;
+  border:3px solid transparent;
+  cursor:pointer;
+}
+
+.profile:hover img{
+  border-color:#fff;
+}
+
+.profile span{
+  display:block;
+  margin-top:10px;
+  color:#aaa;
+}
+
+/* EDIT + DELETE ICONS */
+.actions{
+  position:absolute;
+  top:5px;
+  right:5px;
+  display:flex;
+  gap:5px;
+}
+
+.actions button{
+  background:#000;
+  border:1px solid #555;
+  color:#fff;
+  font-size:10px;
+  cursor:pointer;
+  padding:3px 6px;
+}
+
+.actions .delete{
+  color:red;
+  border-color:red;
+}
+
+/* ADD PROFILE */
+.add-profile img{
+  background:#333;
+  padding:40px;
+}
+
+/* MODAL */
+.modal{
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,0.85);
+  display:none;
+  align-items:center;
+  justify-content:center;
+}
+
+.modal-box{
+  background:#000;
+  padding:30px;
+  width:320px;
+  border-radius:6px;
+}
+
+.modal-box h2{
+  margin-bottom:20px;
+}
+
+.modal-box input{
+  width:100%;
+  margin-bottom:15px;
+  padding:10px;
+  background:#222;
+  border:1px solid #444;
+  color:#fff;
+}
+
+.modal-box button{
+  padding:8px 15px;
+  margin:5px;
+  background:transparent;
+  border:1px solid #aaa;
+  color:#fff;
+  cursor:pointer;
+}
+
+.modal-box .cancel{
+  border-color:red;
+  color:red;
+}
+</style>
+</head>
+
+<body>
+
+<header>
+  <img src="https://upload.wikimedia.org/wikipedia/commons/0/08/Netflix_2015_logo.svg">
+  <button class="logout-btn" onclick="logout()">Logout</button>
+</header>
+
+<h1>Who's watching?</h1>
+
+<div class="profiles" id="profiles"></div>
+
+<!-- MODAL -->
+<div class="modal" id="modal">
+  <div class="modal-box">
+    <h2 id="modalTitle">Add Profile</h2>
+    <input type="text" id="nameInput" placeholder="Profile name">
+    <input type="file" id="imgInput" accept="image/*">
+
+    <button onclick="saveProfile()">Save</button>
+    <button class="cancel" onclick="closeModal()">Cancel</button>
+  </div>
+</div>
+
+<script>
+let profiles = JSON.parse(localStorage.getItem("profiles")) || [];
+let editIndex = null;
+
+const profilesDiv = document.getElementById("profiles");
+const modal = document.getElementById("modal");
+
+function renderProfiles(){
+  profilesDiv.innerHTML="";
+
+  profiles.forEach((p,i)=>{
+    profilesDiv.innerHTML+=`
+      <div class="profile">
+        <div class="actions">
+          <button onclick="editProfile(${i})">Edit</button>
+          <button class="delete" onclick="deleteProfile(${i})">Del</button>
+        </div>
+        <img src="${p.img}" onclick="selectProfile(${i})">
+        <span>${p.name}</span>
+      </div>
+    `;
+  });
+
+  profilesDiv.innerHTML+=`
+    <div class="profile add-profile" onclick="openModal()">
+      <img src="https://cdn-icons-png.flaticon.com/512/1828/1828817.png">
+      <span>Add Profile</span>
+    </div>
+  `;
+}
+
+renderProfiles();
+
+function openModal(){
+  editIndex=null;
+  document.getElementById("modalTitle").innerText="Add Profile";
+  document.getElementById("nameInput").value="";
+  document.getElementById("imgInput").value="";
+  modal.style.display="flex";
+}
+
+function closeModal(){
+  modal.style.display="none";
+}
+
+function saveProfile(){
+  const name=document.getElementById("nameInput").value;
+  const file=document.getElementById("imgInput").files[0];
+
+  if(!name){ alert("Enter name"); return; }
+
+  if(editIndex!==null){
+    if(file){
+      const reader=new FileReader();
+      reader.onload=()=>{
+        profiles[editIndex]={name,img:reader.result};
+        update();
+      };
+      reader.readAsDataURL(file);
+    }else{
+      profiles[editIndex].name=name;
+      update();
+    }
+  }else{
+    if(!file){ alert("Select image"); return; }
+    const reader=new FileReader();
+    reader.onload=()=>{
+      profiles.push({name,img:reader.result});
+      update();
+    };
+    reader.readAsDataURL(file);
+  }
+}
+
+function editProfile(i){
+  editIndex=i;
+  document.getElementById("modalTitle").innerText="Edit Profile";
+  document.getElementById("nameInput").value=profiles[i].name;
+  modal.style.display="flex";
+}
+
+function deleteProfile(i){
+  if(confirm("Delete this profile?")){
+    profiles.splice(i,1);
+    update();
+  }
+}
+
+function update(){
+  localStorage.setItem("profiles",JSON.stringify(profiles));
+  closeModal();
+  renderProfiles();
+}
+
+function selectProfile(i){
+  localStorage.setItem("activeProfile",profiles[i].name);
+  window.location.href="index.html";
+}
+
+function logout(){
+  localStorage.clear();
+  window.location.href="index.html";
+}
+</script>
+
+</body>
+</html>
